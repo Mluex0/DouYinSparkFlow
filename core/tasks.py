@@ -99,22 +99,6 @@ def scroll_and_select_user(page, username, targets):
     logger.debug(f"账号 {username} 开始查找目标好友列表")
     logger.debug(f"账号 {username} 目标好友列表: {targets}")
 
-    # [新增] 等待页面加载完成
-    try:
-        page.wait_for_load_state("networkidle", timeout=config.get("browserTimeout", 120000))
-        logger.debug(f"账号 {username} 页面加载完成")
-    except Exception as e:
-        logger.error(f"账号 {username} 页面加载超时或失败: {e}")
-        raise
-
-    # [新增] 等待滚动容器出现
-    try:
-        page.wait_for_selector(scrollable_friends_selector, timeout=config.get("browserTimeout", 120000))
-        logger.debug(f"账号 {username} 找到对话列表容器")
-    except Exception as e:
-        logger.error(f"账号 {username} 未找到对话列表容器，可能页面加载异常或需要重新登录: {e}")
-        raise
-
     found_targets = set()
     # [修改] 复制一份目标列表用于追踪进度
     remaining_targets = set(targets)
@@ -195,13 +179,9 @@ def scroll_and_select_user(page, username, targets):
             #     # 不 break，继续去滚动以触发后续内容
 
             # 4. 滚动容器
-            try:
-                scrollable_element = page.locator(
-                    scrollable_friends_selector
-                ).element_handle(timeout=10000)  # [修改] 缩短超时时间避免长时间等待
-            except Exception as e:
-                logger.error(f"账号 {username} 无法获取滚动容器: {e}")
-                break
+            scrollable_element = page.locator(
+                scrollable_friends_selector
+            ).element_handle()
 
             if scrollable_element:
                 # [修复] 记录滚动前的 scrollTop，用于检测是否真的滚动了
@@ -262,12 +242,6 @@ def do_user_task(browser, username, cookies, targets):
     )
 
     time.sleep(5)  # 等待5秒让过可能存在的弹窗
-
-    # [新增] 检查是否需要登录（Cookie是否过期）
-    if "login" in page.url.lower() or "douyin.com/chat" not in page.url:
-        logger.error(f"账号 {username} Cookie可能已失效，页面重定向到: {page.url}")
-        context.close()
-        raise Exception(f"账号 {username} Cookie已失效，需要重新配置")
 
     logger.debug(f"账号 {username} 开始发送消息")
     # 滚动并选择用户
